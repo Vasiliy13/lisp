@@ -17,6 +17,8 @@ char* readLine(char* prompt) {
     return cpy;
 }
 
+void add_history(char* unused) {}
+
 #else
 #include <editline/readline.h>
 
@@ -41,7 +43,7 @@ int main(int argc, char** argv) {
     puts("Press Ctrl+c to Exit\n");
 
     while(1) {
-        char* input = readline("Lispy> ");
+        char* input = readLine("Lispy> ");
         add_history(input);
         
         mpc_result_t r;
