@@ -24,33 +24,95 @@ void add_history(char* unused) {}
 
 #endif
 
-long eval_op(long x, char* op, long y) {
-    if (!strcmp(op, "+")) {
-        return x + y;
-    } else if (!strcmp(op, "-")) {
-        return x - y;
-    } else if (!strcmp(op, "*")) {  
-        return x * y;
-    } else if (!strcmp(op, "/")) {
-        return x / y;
-    } else if (!strcmp(op, "%")) {
-        return x % y;
-    } else if (!strcmp(op, "^")) {
-        return pow(x, y);
-    }
-    return 0;
+enum {
+    LVAL_NUM,
+    LVAL_ERR
+};
+
+enum {  
+    LERR_DIV_ZERO,
+    LERR_BAD_OP,
+    LERR_BAD_NUM
+};
+
+typedef struct {
+    int type;
+    long num;
+    int err;
+} lval;
+
+lval lval_num(long x) {
+    lval v;
+    v.type = LVAL_NUM;
+    v.num = x;
+    return v;
 }
 
-long eval(mpc_ast_t* t) {
+lval lval_err(int x) {
+    lval v;
+    v.type = LVAL_ERR;
+    v.err = x;
+    return v;
+}
+
+void lval_print(lval v) {
+    switch (v.type)
+    {
+    case LVAL_NUM:
+        printf("%li", v.num);
+        break;
+    case LVAL_ERR:
+        if (v.err == LERR_DIV_ZERO) {
+            printf("Error: Division By Zero!");
+        } else if (v.err == LERR_BAD_OP) {
+            printf("Error: Invalid Operator!");
+        } else if (v.err == LERR_BAD_NUM) {
+            printf("Error! Invalid number!");
+        }
+        break;
+    }
+}
+
+void lval_println(lval v) {
+    lval_print(v);
+    putchar('\n');
+}
+
+lval eval_op(lval x, char* op, lval y) {
+    if (x.type == LVAL_ERR) {
+        return x;
+    } else if (y.type == LVAL_ERR) {
+        return x;
+    }
+
+    if (!strcmp(op, "+")) {
+        return lval_num(x.num + y.num);
+    } else if (!strcmp(op, "-")) {
+        return lval_num(x.num - y.num);
+    } else if (!strcmp(op, "*")) {  
+        return lval_num(x.num * y.num);
+    } else if (!strcmp(op, "/")) {
+        return y.num == 0 ? lval_err(LERR_DIV_ZERO) : lval_num(x.num / y.num);
+    } else if (!strcmp(op, "%")) {
+        return lval_num(x.num % y.num);
+    } else if (!strcmp(op, "^")) {
+        return lval_num(pow(x.num, y.num));
+    }
+    return lval_err(LERR_BAD_OP);
+}
+
+lval eval(mpc_ast_t* t) {
     if (strstr(t->tag, "number")) {
-        return atoi(t->contents);
+        errno = 0;
+        long x = strtol(t->contents, NULL, 10);
+        return errno != ERANGE ? lval_num(x) : lval_err(LERR_BAD_NUM);
     }
     char* op = t->children[1]->contents;
-
-    long x = eval(t->children[2]);
+    lval x = eval(t->children[2]);
 
     if (!strcmp(op, "-") && !strstr(t->children[3]->tag, "expr")) {
-        return -x;
+        x.num = -x.num;
+        return x;
     }
     
     for (size_t i = 3; strstr(t->children[i]->tag, "expr"); i++) {
@@ -85,8 +147,8 @@ int main(int argc, char** argv) {
         if (mpc_parse("<stdin>", input, Lispy, &r))
         {
             // mpc_ast_print(r.output);
-            long result = eval(r.output);
-            printf("%li\n", result);
+            lval result = eval(r.output);
+            lval_println(result);
             mpc_ast_delete(r.output);
         } else {
             mpc_err_print(r.error);
