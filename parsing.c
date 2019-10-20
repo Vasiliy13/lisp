@@ -284,6 +284,15 @@ lval* builtin_join(lval* a) {
     return x;
 }
 
+lval* builtin_len(lval* a) {
+    LASSERT(a, a->count != 1, "Function 'eval' passed too many arguments!");
+    LASSERT(a, a->cell[0]->type != LVAL_QEXPR, "Function 'eval' passed incorrect type!")
+
+    lval* x = lval_num(a->cell[0]->count);
+    lval_del(a);
+    return x;
+}
+
 lval* builtin(lval* a, char* func) {
     if (strcmp("list", func) == 0) {
         return builtin_list(a);
@@ -295,6 +304,8 @@ lval* builtin(lval* a, char* func) {
         return builtin_join(a);
     } else if (strcmp("eval", func) == 0) {
         return builtin_eval(a);
+    } else if (strcmp("len", func) == 0) {
+        return builtin_len(a);
     } else if (strstr("+-/*%^", func)) {
         return builtin_op(a, func);
     }
@@ -350,6 +361,7 @@ int main(int argc, char** argv) {
         "                                                                         \
             number   : /-?[0-9]+/ ;                                               \
             symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\"       \
+                     | \"len\"                                                    \
                      | '+' | '-' | '*' | '/' | '%' | '^' ;                        \
             sexpr    : '(' <expr>* ')' ;                                          \
             qexpr    : '{' <expr>* '}' ;                                          \
